@@ -1,0 +1,40 @@
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+COPY package.json pnpm-workspace.yaml ./
+COPY packages/shared/package.json ./packages/shared/
+COPY apps/server/package.json ./apps/server/
+
+RUN npm install -g pnpm
+RUN pnpm install --frozen-lockfile
+
+COPY . .
+
+RUN pnpm --filter @game/shared build
+RUN pnpm --filter server build
+
+FROM node:20-alpine
+
+WORKDIR /app
+
+ENV NODE_ENV=production
+
+COPY package.json pnpm-workspace.yaml ./
+COPY packages/shared/package.json ./packages/shared/
+COPY apps/server/package.json ./apps/server/
+
+RUN npm install -g pnpm
+RUN pnpm install --prod --frozen-lockfile
+
+COPY --from=builder /app/packages/shared/dist ./packages/shared/dist
+COPY --from=builder /app/apps/server/dist ./apps/server/dist
+COPY --from=builder /app/apps/server/prisma ./apps/server/prisma
+
+WORKDIR /app/apps/server
+
+RUN npx prisma generate
+
+EXPOSE 3000
+
+CMD ["node", "dist/main.js"]

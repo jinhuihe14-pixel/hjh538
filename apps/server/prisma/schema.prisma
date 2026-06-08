@@ -1,0 +1,359 @@
+// 数据源
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ========== 用户相关 ==========
+
+model User {
+  id           BigInt    @id @default(autoincrement())
+  username     String    @unique @db.VarChar(64)
+  password     String    @db.VarChar(128)
+  nickname     String    @db.VarChar(64)
+  avatar       String?   @db.VarChar(255)
+  level        Int       @default(1)
+  exp          BigInt    @default(0)
+  vipLevel     Int       @default(0) @map("vip_level")
+  status       Int       @default(0)
+  lastLoginAt  DateTime? @map("last_login_at")
+  lastLoginIp  String?   @db.VarChar(45) @map("last_login_ip")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  resources    UserResource?
+  heroes       UserHero[]
+  equipments   UserEquipment[]
+  items        UserItem[]
+  city         UserCity?
+  mails        Mail[]
+  arenaRanks   ArenaRank[]
+
+  @@map("users")
+}
+
+model UserResource {
+  id                BigInt   @id @default(autoincrement())
+  userId            BigInt   @unique @map("user_id")
+  gold              BigInt   @default(0)
+  silver            BigInt   @default(0)
+  food              BigInt   @default(0)
+  diamond           Int      @default(0)
+  stamina           Int      @default(200)
+  staminaUpdatedAt  DateTime @default(now()) @map("stamina_updated_at")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  user              User     @relation(fields: [userId], references: [id])
+
+  @@map("user_resources")
+}
+
+// ========== 武将相关 ==========
+
+model ConfigHero {
+  id            Int      @id
+  name          String   @db.VarChar(32)
+  rarity        Int
+  profession    Int
+  camp          Int
+  baseHp        Int      @map("base_hp")
+  baseAttack    Int      @map("base_attack")
+  baseDefense   Int      @map("base_defense")
+  baseSpeed     Int      @map("base_speed")
+  growthHp      Decimal  @db.Decimal(10, 4) @map("growth_hp")
+  growthAttack  Decimal  @db.Decimal(10, 4) @map("growth_attack")
+  growthDefense Decimal  @db.Decimal(10, 4) @map("growth_defense")
+  growthSpeed   Decimal  @db.Decimal(10, 4) @map("growth_speed")
+  skillIds      Json     @map("skill_ids")
+  talentTree    Json     @map("talent_tree")
+  bonds         Json
+  description   String?  @db.VarChar(500)
+  version       Int      @default(1)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  userHeroes    UserHero[]
+
+  @@map("config_heroes")
+}
+
+model UserHero {
+  id            BigInt   @id @default(autoincrement())
+  userId        BigInt   @map("user_id")
+  heroId        Int      @map("hero_id")
+  level         Int      @default(1)
+  exp           Int      @default(0)
+  star          Int      @default(1)
+  quality       Int      @default(0)
+  talentPoints  Json     @map("talent_points")
+  pos           Int      @default(0)
+  equipmentIds  Json     @map("equipment_ids")
+  runeIds       Json     @map("rune_ids")
+  isLocked      Boolean  @default(false) @map("is_locked")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  user          User     @relation(fields: [userId], references: [id])
+  hero          ConfigHero @relation(fields: [heroId], references: [id])
+
+  @@index([userId])
+  @@index([heroId])
+  @@index([userId, pos])
+  @@map("user_heroes")
+}
+
+// ========== 技能相关 ==========
+
+model ConfigSkill {
+  id            Int      @id
+  name          String   @db.VarChar(32)
+  type          Int
+  quality       Int
+  description   String?  @db.VarChar(500)
+  effectType    Int      @map("effect_type")
+  effectValue   Json     @map("effect_value")
+  cooldown      Int      @default(0)
+  targetType    Int      @map("target_type")
+  targetNum     Int      @default(1) @map("target_num")
+  triggerProb   Decimal  @db.Decimal(5, 2) @default(100) @map("trigger_prob")
+  version       Int      @default(1)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@map("config_skills")
+}
+
+// ========== 装备相关 ==========
+
+model ConfigEquipment {
+  id         Int      @id
+  name       String   @db.VarChar(64)
+  slot       Int
+  rarity     Int
+  quality    Int
+  setId      Int?     @map("set_id")
+  baseAttrs  Json     @map("base_attrs")
+  growAttrs  Json     @map("grow_attrs")
+  mainAttrs  Json     @map("main_attrs")
+  subAttrs   Json     @map("sub_attrs")
+  levelMax   Int      @default(1) @map("level_max")
+  description String? @db.VarChar(500)
+  version    Int      @default(1)
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  userEquipments UserEquipment[]
+
+  @@map("config_equipment")
+}
+
+model UserEquipment {
+  id          BigInt   @id @default(autoincrement())
+  userId      BigInt   @map("user_id")
+  equipId     Int      @map("equip_id")
+  level       Int      @default(1)
+  exp         Int      @default(0)
+  mainAttr    Json     @map("main_attr")
+  subAttrs    Json     @map("sub_attrs")
+  heroId      BigInt?  @map("hero_id")
+  isLocked    Boolean  @default(false) @map("is_locked")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  user        User             @relation(fields: [userId], references: [id])
+  equipment   ConfigEquipment  @relation(fields: [equipId], references: [id])
+
+  @@index([userId])
+  @@index([equipId])
+  @@index([heroId])
+  @@map("user_equipment")
+}
+
+// ========== 道具背包 ==========
+
+model UserItem {
+  id        BigInt   @id @default(autoincrement())
+  userId    BigInt   @map("user_id")
+  itemId    Int      @map("item_id")
+  count     Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@unique([userId, itemId])
+  @@map("user_items")
+}
+
+// ========== 城池相关 ==========
+
+model ConfigBuilding {
+  id            Int      @id
+  name          String   @db.VarChar(32)
+  type          String   @db.VarChar(32)
+  maxLevel      Int      @map("max_level")
+  effects       Json
+  upgradeCosts  Json     @map("upgrade_costs")
+  upgradeTimes  Json     @map("upgrade_times")
+  description   String?  @db.VarChar(500)
+  version       Int      @default(1)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@map("config_buildings")
+}
+
+model UserCity {
+  id             BigInt   @id @default(autoincrement())
+  userId         BigInt   @unique @map("user_id")
+  mainHallLevel  Int      @default(1) @map("main_hall_level")
+  buildings      Json
+  defenders      Json
+  wallDefense    Int      @default(1000) @map("wall_defense")
+  wallMaxDefense Int      @default(1000) @map("wall_max_defense")
+  lastCollectAt  DateTime @default(now()) @map("last_collect_at")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  user           User     @relation(fields: [userId], references: [id])
+
+  @@map("user_cities")
+}
+
+// ========== 赛季排位 ==========
+
+model Season {
+  id         Int      @id @default(autoincrement())
+  name       String   @db.VarChar(64)
+  type       Int
+  status     Int      @default(0)
+  startAt    DateTime @map("start_at")
+  endAt      DateTime @map("end_at")
+  rewards    Json
+  tierRules  Json     @map("tier_rules")
+  isArchived Boolean  @default(false) @map("is_archived")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  arenaRanks ArenaRank[]
+
+  @@index([status])
+  @@index([startAt])
+  @@index([endAt])
+  @@map("seasons")
+}
+
+model ArenaRank {
+  id           BigInt   @id @default(autoincrement())
+  seasonId     Int      @map("season_id")
+  userId       BigInt   @map("user_id")
+  rank         Int      @default(0)
+  score        Int      @default(0)
+  tier         Int      @default(1)
+  division     Int      @default(5)
+  wins         Int      @default(0)
+  losses       Int      @default(0)
+  winStreak    Int      @default(0) @map("win_streak")
+  bestRank     Int      @default(99999) @map("best_rank")
+  bestTier     Int      @default(1) @map("best_tier")
+  lastBattleAt DateTime? @map("last_battle_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  season       Season   @relation(fields: [seasonId], references: [id])
+  user         User     @relation(fields: [userId], references: [id])
+
+  @@unique([seasonId, userId])
+  @@index([seasonId, score])
+  @@index([userId])
+  @@map("arena_ranks")
+}
+
+// ========== 战报相关 ==========
+
+model BattleReport {
+  id             BigInt    @id @default(autoincrement())
+  battleType     Int       @map("battle_type")
+  attackerId     BigInt    @map("attacker_id")
+  defenderId     BigInt    @map("defender_id")
+  winner         Int       @default(0)
+  attackerPower  Int       @default(0) @map("attacker_power")
+  defenderPower  Int       @default(0) @map("defender_power")
+  totalRounds    Int       @default(0) @map("total_rounds")
+  roundsData     Bytes     @map("rounds_data")
+  attackerLineup Json      @map("attacker_lineup")
+  defenderLineup Json      @map("defender_lineup")
+  isRead         Boolean   @default(false) @map("is_read")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  @@index([battleType])
+  @@index([attackerId])
+  @@index([defenderId])
+  @@index([createdAt])
+  @@map("battle_reports")
+}
+
+// ========== 邮件相关 ==========
+
+model Mail {
+  id          BigInt    @id @default(autoincrement())
+  userId      BigInt    @map("user_id")
+  type        Int
+  title       String    @db.VarChar(128)
+  content     String    @db.Text
+  attachments Json
+  isRead      Boolean   @default(false) @map("is_read")
+  isClaimed   Boolean   @default(false) @map("is_claimed")
+  expiredAt   DateTime  @map("expired_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  user        User      @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([isRead])
+  @@index([expiredAt])
+  @@map("mails")
+}
+
+// ========== 配置版本 ==========
+
+model ConfigVersion {
+  id          Int      @id @default(autoincrement())
+  configType  String   @db.VarChar(32) @map("config_type")
+  version     Int
+  status      Int      @default(0)
+  grayRatio   Int      @default(0) @map("gray_ratio")
+  data        Json
+  operator    String?  @db.VarChar(64)
+  remark      String?  @db.VarChar(255)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([configType])
+  @@index([status])
+  @@map("config_versions")
+}
+
+// ========== 操作日志 ==========
+
+model OperationLog {
+  id         BigInt   @id @default(autoincrement())
+  userId     BigInt?  @map("user_id")
+  operator   String?  @db.VarChar(64)
+  module     String   @db.VarChar(32)
+  action     String   @db.VarChar(64)
+  params     Json?
+  result     Json?
+  ip         String?  @db.VarChar(45)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([module])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("operation_logs")
+}
